@@ -12,7 +12,7 @@
 - Added setup, onboarding, consent, and submission documentation.
 - Added Vercel FastAPI entrypoint, persistent-Postgres enforcement, authenticated scheduler endpoint, and a one-minute Vercel Cron definition.
 - Created local `.env` with fresh random webhook/tool/cron secrets; no Bolna API key or agent IDs were inserted.
-- Verified the test suite: **17 passed**; Python compilation passed.
+- Verified the test suite: **18 passed**; Python compilation passed.
 
 ## In progress
 

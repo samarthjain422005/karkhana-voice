@@ -1,0 +1,58 @@
+{
+  "agent_config": {
+    "agent_name": "Karkhana Close",
+    "agent_welcome_message": "Namaste, main Karkhana Voice ka AI assistant bol raha hoon. Ye call record hoti hai. Shift ka stock check karna hai, do minute lagenge.",
+    "webhook_url": "",
+    "calling_guardrails": {
+      "call_start_hour": 8,
+      "call_end_hour": 21
+    },
+    "tasks": [
+      {
+        "task_type": "conversation",
+        "toolchain": {
+          "execution": "sequential",
+          "pipelines": [["transcriber", "llm", "synthesizer"]]
+        },
+        "tools_config": {
+          "llm_agent": {
+            "agent_type": "simple_llm_agent",
+            "agent_flow_type": "streaming",
+            "llm_config": {
+              "provider": "openai",
+              "model": "gpt-4.1-mini",
+              "max_tokens": 150,
+              "temperature": 0.2
+            }
+          },
+          "synthesizer": {
+            "provider": "elevenlabs",
+            "provider_config": {
+              "voice": "Nila",
+              "voice_id": "V9LCAAi4tTlqe9JadbCo",
+              "model": "eleven_turbo_v2_5"
+            },
+            "stream": true,
+            "buffer_size": 250,
+            "audio_format": "wav"
+          },
+          "transcriber": {
+            "provider": "deepgram",
+            "model": "nova-3",
+            "language": "hi",
+            "stream": true,
+            "encoding": "linear16",
+            "sampling_rate": 16000,
+            "endpointing": 250
+          },
+          "input": {"provider": "plivo", "format": "wav"},
+          "output": {"provider": "plivo", "format": "wav"}
+        },
+        "task_config": {
+          "call_terminate": 120,
+          "hangup_after_silence": 10
+        }
+      }
+    ]
+  }
+}

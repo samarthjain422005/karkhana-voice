@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101812">
+  <title>Karkhana Voice — Control Room</title>
+  <style>
+    :root{color-scheme:dark;--bg:#101812;--panel:#19251d;--line:#2c3c31;--text:#f1f5ed;--muted:#a9b5a9;--green:#a4e7a4;--red:#ff796c;--amber:#f5c567}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+    main{max-width:1120px;margin:auto;padding:24px 16px 48px}header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:20px}
+    h1{font-size:clamp(1.7rem,5vw,2.4rem);line-height:1.1;margin:0}h2{font-size:1.1rem;margin:0 0 14px}.eyebrow{color:var(--green);font-size:.76rem;letter-spacing:.13em;text-transform:uppercase}
+    .label{color:var(--amber);font-size:.78rem;font-weight:700;border:1px solid #6c5527;padding:5px 8px;border-radius:20px;white-space:nowrap}
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}.card,.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+    .metric strong{display:block;font-size:1.7rem}.metric span,.muted{color:var(--muted);font-size:.88rem}.columns{display:grid;grid-template-columns:1.5fr 1fr;gap:14px}
+    .risk{display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}.risk:last-child{border:0}.band{font-weight:750}.Red{color:var(--red)}.Amber{color:var(--amber)}.Green{color:var(--green)}
+    .score{font-variant-numeric:tabular-nums;font-weight:700}.components{color:var(--muted);font-size:.78rem}.form{display:grid;gap:10px;margin-top:8px}label{font-size:.9rem}input,select,button{font:inherit;border-radius:9px;padding:11px 12px;border:1px solid var(--line);background:#101812;color:var(--text);width:100%}button{background:var(--green);color:#152117;border:0;font-weight:750;cursor:pointer}button:disabled{opacity:.55;cursor:wait}.check{display:flex;align-items:flex-start;gap:9px}.check input{width:auto;margin-top:5px}.notice{margin-top:12px;color:var(--muted);font-size:.85rem}.status{min-height:1.5em;margin:8px 0;color:var(--green)}.call{margin-top:14px}
+    .callrow{padding:9px 0;border-bottom:1px solid var(--line);font-size:.88rem}.callrow:last-child{border:0}.empty{color:var(--muted);font-size:.9rem}
+    @media(max-width:750px){.grid{grid-template-columns:repeat(2,1fr)}.columns{grid-template-columns:1fr}header{align-items:flex-start}.risk{grid-template-columns:58px 1fr auto}.card,.panel{padding:14px}}
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div><div class="eyebrow">Karkhana Voice · Control Room</div><h1>The ERP you never open,<br>because it calls you.</h1></div>
+    <span class="label">SYNTHETIC DEMO DATA</span>
+  </header>
+  <p class="muted" id="dataset-label">Loading the Aarav Pumps sample workspace…</p>
+  <section class="grid" id="metrics" aria-label="Watchtower summary"></section>
+  <div class="columns">
+    <section class="panel">
+      <h2>Watchtower · risk lane</h2>
+      <div id="risk-list" class="empty">Loading risk scores…</div>
+      <h2 style="margin-top:20px">Capital lane</h2>
+      <div id="capital-list" class="empty">Loading stock cover…</div>
+      <h2 style="margin-top:20px">Operational signals · unscored</h2>
+      <div id="operations-list" class="empty">Loading machine and handover signals…</div>
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Try a supplier signal</h2>
+        <p class="muted">Synthetic what-if only. See the transparent score update.</p>
+        <form id="signal-form" class="form">
+          <label>Supplier name<input name="supplier_name" value="Shree Components" required></label>
+          <label>Added delay (days)<input name="delay_days" type="number" min="0" max="30" value="4" required></label>
+          <button type="submit">Add signal & rescore</button>
+        </form>
+        <p id="signal-status" class="status" role="status"></p>
+      </section>
+      <section class="panel call">
+        <h2>Call me now · Close / Open</h2>
+        <p class="muted">The recipient must own this number or have explicitly opted in. Calls run only within the configured call window.</p>
+        <form id="workflow-form" class="form">
+          <label>Agent<select name="agent" id="workflow-agent"><option value="close">Close</option><option value="open">Open</option></select></label>
+          <label>Workflow<select name="mode" id="workflow-mode"><option value="shift_close">Shift close</option><option value="opening_count">Opening count</option></select></label>
+          <label>Recipient role<select name="role" id="workflow-role"><option value="floor_manager">Floor manager</option><option value="store_keeper">Store keeper</option><option value="supervisor">Supervisor</option></select></label>
+          <label>Recipient name<input name="name" value="Ramesh" required></label>
+          <label>Phone (E.164)<input name="phone" type="tel" placeholder="+919876543210" pattern="\+[1-9][0-9]{8,14}" required></label>
+          <label>Permitted call window<input name="call_window" value="08:00-21:00" pattern="[0-9]{2}:[0-9]{2}-[0-9]{2}:[0-9]{2}" required></label>
+          <label class="check"><input name="recipient_opted_in" type="checkbox" required><span>I confirm this recipient explicitly agreed to receive this call.</span></label>
+          <button type="submit">Place opted-in workflow call</button>
+        </form>
+        <p id="workflow-status" class="status" role="status"></p>
+      </section>
+    </aside>
+  </div>
+  <div class="columns call">
+    <section class="panel">
+      <h2>Alert · Machine breakdown dispatch</h2>
+      <p class="muted">Calls the opted-in technician now; if no clear ack, the orchestrator calls the opted-in supervisor after the persisted escalation timer.</p>
+      <form id="incident-form" class="form">
+        <label>Machine<input name="machine" placeholder="Machine 3" required></label>
+        <label>Technician name<input name="technician_name" required></label>
+        <label>Technician phone<input name="technician_phone" type="tel" pattern="\+[1-9][0-9]{8,14}" required></label>
+        <label class="check"><input name="technician_opted_in" type="checkbox" required><span>Technician explicitly opted in to breakdown calls.</span></label>
+        <label>Supervisor name<input name="supervisor_name" required></label>
+        <label>Supervisor phone<input name="supervisor_phone" type="tel" pattern="\+[1-9][0-9]{8,14}" required></label>
+        <label class="check"><input name="supervisor_opted_in" type="checkbox" required><span>Supervisor explicitly opted in to escalation calls.</span></label>
+        <button type="submit">Report breakdown & dispatch</button>
+      </form>
+      <p id="incident-status" class="status" role="status"></p>
+    </section>
+    <section class="panel">
+      <h2>Alert · Supplier ETA (existing PO only)</h2>
+      <p class="muted">The demo suppliers have no phone numbers or recorded consent. Configure only a real supplier who opted in; this call cannot create an order or discuss prices.</p>
+      <form id="supplier-form" class="form">
+        <label>Open purchase order<select name="po_id" id="supplier-po" required></select></label>
+        <label>Supplier phone (E.164)<input name="supplier_phone" type="tel" pattern="\+[1-9][0-9]{8,14}" required></label>
+        <label>Permitted call window<input name="call_window" value="08:00-21:00" required></label>
+        <label class="check"><input name="supplier_opted_in" type="checkbox" required><span>I confirm this supplier explicitly consented to ETA calls.</span></label>
+        <button type="submit">Confirm opted-in supplier ETA</button>
+      </form>
+      <p id="supplier-status" class="status" role="status"></p>
+    </section>
+  </div>
+  <section class="panel call">
+    <h2>Workflow status</h2>
+    <div id="agent-status" class="grid"></div>
+    <div class="columns">
+      <div><h2>Breakdowns</h2><div id="incident-list" class="empty">No incidents recorded.</div></div>
+      <div><h2>Pending handovers & approvals</h2><div id="handover-list" class="empty">No pending handovers.</div><div id="approval-list"></div></div>
+    </div>
+  </section>
+  <section class="panel call">
+    <h2>Recent calls</h2><div id="calls" class="empty">No call records yet.</div>
+    <h2 style="margin-top:20px">Needs review</h2><div id="review-list" class="empty">No entries waiting for review.</div>
+    <h2 style="margin-top:20px">Production outputs</h2><div id="production-list" class="empty">No production outputs recorded.</div>
+  </section>
+  <p class="notice">All sample inventory, suppliers, and work orders are synthetic. Do not use the demo to contact anyone without their consent.</p>
+</main>
+<script>
+  const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
+  async function loadDashboard() {
+    const [watchResponse, stateResponse, agentsResponse] = await Promise.all([fetch("/api/watchtower"), fetch("/api/state"), fetch("/api/agents")]);
+    if (!watchResponse.ok || !stateResponse.ok || !agentsResponse.ok) throw new Error("Could not load the dashboard.");
+    const watch = await watchResponse.json();
+    const state = await stateResponse.json();
+    const agents = await agentsResponse.json();
+    document.getElementById("dataset-label").textContent = watch.synthetic_label;
+    document.getElementById("metrics").innerHTML = Object.entries(watch.summary).map(([label, value]) =>
+      `<div class="card metric"><strong>${escapeHtml(value)}</strong><span>${escapeHtml(label.replace("_"," "))}</span></div>`).join("");
+    document.getElementById("risk-list").innerHTML = watch.risk_lane.map(row =>
+      `<div class="risk"><span class="band ${escapeHtml(row.band)}">${escapeHtml(row.band)}</span><div><strong>${escapeHtml(row.sku)} · ${escapeHtml(row.name)}</strong><div class="components">${escapeHtml(row.reason)}<br>Slack ${escapeHtml(row.slack_days ?? "—")}d · points: slack ${row.components.slack}, supplier ${row.components.supplier_slip}, source ${row.components.single_source}, data ${row.components.data_confidence}</div></div><span class="score">${escapeHtml(row.score)}</span></div>`).join("");
+    document.getElementById("capital-list").innerHTML = watch.capital_lane.length ? watch.capital_lane.map(row =>
+      `<div class="callrow"><strong>${escapeHtml(row.sku)} · ${escapeHtml(row.name)}</strong> — ${escapeHtml(row.days_cover)} days cover · ₹${escapeHtml(row.tied_up_inr)} tied up<br><span class="muted">${escapeHtml(row.action)}</span></div>`).join("") : '<span class="empty">No over-stock flags.</span>';
+    document.getElementById("operations-list").innerHTML = watch.operational_signals.length ? watch.operational_signals.map(signal =>
+      `<div class="callrow"><strong>${escapeHtml(signal.type.replace("_"," "))}</strong> · ${escapeHtml(signal.message)}</div>`).join("") : '<span class="empty">No active machine / handover warnings.</span>';
+    document.getElementById("calls").innerHTML = state.calls.length ? state.calls.map(call =>
+      `<div class="callrow"><strong>${escapeHtml(call.agent)} · ${escapeHtml(call.mode)} · ${escapeHtml(call.status)}</strong> · ${escapeHtml(call.execution_id)} · ${escapeHtml(call.duration)}s · $${escapeHtml(call.total_cost)}<br><span class="muted">Prompt ${escapeHtml(call.prompt_version)}</span>${call.transcript ? `<details><summary>Transcript (numbers redacted)</summary><pre style="white-space:pre-wrap">${escapeHtml(call.transcript)}</pre></details>` : ""}</div>`).join("") : '<span class="empty">No call records yet. Seed data is ready.</span>';
+    const outputs = state.production_outputs || [];
+    const needsReview = [
+      ...(state.events || []).filter(item => item.state === "needs_review" || item.state === "rejected"),
+      ...outputs.filter(item => item.state === "needs_review")
+    ];
+    document.getElementById("review-list").innerHTML = needsReview.length ? needsReview.map(item =>
+      `<div class="callrow"><strong>${escapeHtml(item.state)}</strong> · ${escapeHtml(item.part_label || item.product_code)} · ${escapeHtml(item.qty)} ${escapeHtml(item.unit)}<br><span class="muted">${escapeHtml(item.guardrail_flags)}</span></div>`).join("") : '<span class="empty">No entries waiting for review.</span>';
+    document.getElementById("production-list").innerHTML = outputs.length ? outputs.map(item =>
+      `<div class="callrow"><strong>${escapeHtml(item.product_code)}</strong> · ${escapeHtml(item.qty)} ${escapeHtml(item.unit)} · ${escapeHtml(item.state)}<br><span class="muted">Execution ${escapeHtml(item.execution_id)}</span></div>`).join("") : '<span class="empty">No production outputs recorded.</span>';
+    document.getElementById("agent-status").innerHTML = agents.map(agent =>
+      `<div class="card metric"><strong>${agent.configured ? "Ready" : "Not configured"}</strong><span>${escapeHtml(agent.agent)} · ${escapeHtml(agent.prompt_version)}</span></div>`).join("");
+    const purchaseOrders = state.purchase_orders || [];
+    document.getElementById("supplier-po").innerHTML = purchaseOrders.length
+      ? purchaseOrders.map(po => `<option value="${escapeHtml(po.id)}">${escapeHtml(po.id)} · ${escapeHtml(po.part_sku)} ${escapeHtml(po.part_name)} · ${escapeHtml(po.supplier_name)} · ETA ${escapeHtml(po.eta_date)}${po.supplier_opted_in ? " · consent on file" : " · no supplier consent"}</option>`).join("")
+      : '<option value="">No open purchase orders</option>';
+    document.getElementById("incident-list").innerHTML = state.incidents.length ? state.incidents.map(incident =>
+      `<div class="callrow"><strong>${escapeHtml(incident.machine)}</strong> · ${escapeHtml(incident.id)}<br><span class="muted">Technician ${escapeHtml(incident.technician_status)} · Supervisor ${escapeHtml(incident.supervisor_status)} · ETA ${escapeHtml(incident.technician_eta_minutes ?? "—")} min · ${incident.ack_at ? "acknowledged" : "awaiting ack"}</span>${incident.resolved_at ? "" : `<form class="manual-ack form" data-incident="${escapeHtml(incident.id)}"><input name="note" placeholder="Human acknowledgement note" required><button type="submit">Acknowledge / resolve</button></form>`}</div>`).join("") : '<span class="empty">No incidents recorded.</span>';
+    document.getElementById("handover-list").innerHTML = state.handovers.length ? state.handovers.map(item =>
+      `<div class="callrow"><strong>${escapeHtml(item.severity)}</strong> · ${escapeHtml(item.text)}<br><span class="muted">Handover #${escapeHtml(item.id)} · awaiting incoming shift acknowledgement</span></div>`).join("") : '<span class="empty">No pending handovers.</span>';
+    document.getElementById("approval-list").innerHTML = (state.approvals || []).map(item =>
+      `<div class="callrow"><strong>${escapeHtml(item.decision)}</strong> · ${escapeHtml(item.part_label)}<br><span class="muted">Approval only; no order was placed.</span></div>`).join("");
+    document.querySelectorAll(".manual-ack").forEach(form => form.addEventListener("submit", async event => {
+      event.preventDefault();
+      const note = new FormData(form).get("note");
+      const response = await fetch(`/api/incidents/${encodeURIComponent(form.dataset.incident)}/ack`, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({note})});
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.detail || "Incident acknowledgement failed.");
+      await loadDashboard();
+    }));
+  }
+  document.getElementById("signal-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    const status = document.getElementById("signal-status");
+    const form = new FormData(event.currentTarget);
+    try {
+      const response = await fetch("/api/demo/owner-note", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({supplier_name:form.get("supplier_name"),delay_days:Number(form.get("delay_days"))})});
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.detail || "Signal could not be added.");
+      status.textContent = result.message;
+      await loadDashboard();
+    } catch (error) { status.textContent = error.message; }
+  });
+  const workflowAgent = document.getElementById("workflow-agent");
+  const workflowMode = document.getElementById("workflow-mode");
+  const workflowRole = document.getElementById("workflow-role");
+  function updateWorkflowOptions() {
+    const agent = workflowAgent.value;
+    const modes = agent === "close" ? [["shift_close","Shift close"],["opening_count","Opening count"]] : [["morning_brief","Morning brief"],["handover_brief","Incoming handover"]];
+    const roles = agent === "close" ? [["floor_manager","Floor manager"],["store_keeper","Store keeper"],["supervisor","Supervisor"]] : workflowMode.value === "morning_brief" ? [["owner","Owner"],["purchaser","Purchaser"]] : [["supervisor","Supervisor"]];
+    workflowMode.innerHTML = modes.map(([value,label]) => `<option value="${value}">${label}</option>`).join("");
+    workflowRole.innerHTML = roles.map(([value,label]) => `<option value="${value}">${label}</option>`).join("");
+  }
+  workflowAgent.addEventListener("change", updateWorkflowOptions);
+  workflowMode.addEventListener("change", updateWorkflowOptions);
+  updateWorkflowOptions();
+  document.getElementById("workflow-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    const button = event.currentTarget.querySelector("button");
+    const status = document.getElementById("workflow-status");
+    const form = new FormData(event.currentTarget);
+    button.disabled = true;
+    status.textContent = "Placing workflow call…";
+    try {
+      const response = await fetch("/api/workflow/call", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({agent:form.get("agent"),mode:form.get("mode"),role:form.get("role"),phone:form.get("phone"),name:form.get("name"),recipient_opted_in:form.get("recipient_opted_in")==="on",call_window:form.get("call_window")})});
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.detail || "Call could not be placed.");
+      status.textContent = `${result.agent} / ${result.mode} queued. Execution ID: ${result.execution_id}`;
+      await loadDashboard();
+    } catch (error) { status.textContent = error.message; }
+    finally { button.disabled = false; }
+  });
+  document.getElementById("incident-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const status = document.getElementById("incident-status");
+    const button = event.currentTarget.querySelector("button");
+    button.disabled = true;
+    try {
+      const body = Object.fromEntries(form.entries());
+      body.technician_opted_in = form.get("technician_opted_in") === "on";
+      body.supervisor_opted_in = form.get("supervisor_opted_in") === "on";
+      const response = await fetch("/api/incidents", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const result = await response.json();
+      if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : `${result.detail?.message || "Dispatch failed"} (incident ${result.detail?.incident_id || "recorded"})`);
+      status.textContent = `Technician called. Incident ${result.incident_id}; escalation timer is active.`;
+      await loadDashboard();
+    } catch (error) { status.textContent = error.message; }
+    finally { button.disabled = false; }
+  });
+  document.getElementById("supplier-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const status = document.getElementById("supplier-status");
+    const button = event.currentTarget.querySelector("button");
+    button.disabled = true;
+    try {
+      const response = await fetch("/api/supplier-eta", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({po_id:form.get("po_id"),supplier_phone:form.get("supplier_phone"),supplier_opted_in:form.get("supplier_opted_in")==="on",call_window:form.get("call_window")})});
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.detail || "Supplier ETA call could not be placed.");
+      status.textContent = `Alert agent called for existing PO ${result.purchase_order}.`;
+      await loadDashboard();
+    } catch (error) { status.textContent = error.message; }
+    finally { button.disabled = false; }
+  });
+  loadDashboard().catch(error => { document.getElementById("risk-list").textContent = error.message; });
+</script>
+</body>
+</html>

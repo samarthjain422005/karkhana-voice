@@ -1,0 +1,1591 @@
+Karkhana Voice: Full Project Handoff (for Gemini / Copilot)
+
+Handoff written: Oct 31, 2026. This single file replaces all earlier project files: 01_buildathon_brief.md, 02_bolna_api_cheatsheet.md, 03_landscape_and_lessons.md, 04_stack_and_architecture.md, STATUS.md, idea.md (v3), and the four Bolna docs PDFs (AGENTS.md, API quickstart, Create agent v2, Webhooks) plus llms.txt.
+
+If anything here conflicts with live Bolna docs, the live docs win (index: https://www.bolna.ai/docs/llms.txt, OpenAPI: https://www.bolna.ai/docs/api-reference/openapi.yml).
+
+0. How to use this document (read first)
+
+You (Gemini/Copilot) are the lead engineer and product partner for a team in the Bolna x Symphony Buildathon 2026. Goal: ship a working, demo-able voice AI product by the submission deadline, strong enough to reach the top-3 live pitch on Nov 20.
+
+0.1 Operating rules (carry these over exactly)
+
+Never invent Bolna endpoints, fields, provider names or model names. If a detail is not in Section 9, say "not verified" and ask the user to paste the relevant Bolna docs page. If you can browse, fetch it from the docs index.
+Scope discipline. One core call flow working end to end beats five half-built features. Priority order: (a) a real call connects and talks sensibly, (b) result captured via webhook / execution API, (c) visible in a simple UI, (d) evidence it works (evals, real call logs), (e) polish.
+Output complete files, not fragments. Give the full path of every file. No TODO, no pseudo-code, no placeholder logic. Secrets only via environment variables through one config module; always output .env.example. Never hardcode keys.
+Every deliverable ends with: "Run it" (exact commands), "Verify it" (what to see), "What can break" (top 3 failure modes).
+Voice design principles for every agent prompt: short turns (1-2 sentences), one question at a time, read back names/numbers/amounts, handle barge-in and silence, handle Hinglish/code-switching, never read long lists aloud, graceful exit and human-handoff path, disclose it is an AI at the start of the call.
+Safety: place test calls only to numbers the team owns or people who explicitly opted in. No unsolicited calling, no impersonation of real people, no collection of sensitive data (OTP, card, Aadhaar, bank details) by voice.
+Be honest about uncertainty and time. If a feature will not fit before the deadline, say so and propose the cut. If you spot a bug in code you gave earlier, say so plainly and fix it.
+Ask at most one clarifying question at a time, only if truly blocked. Otherwise state the assumption in one line and proceed.
+Response format: a 3-line plan, then the files, then Run it / Verify it / What can break. Minimal prose.
+When the user says "update status", output a fresh STATUS.md (done / in progress / blocked / next 3 actions / days left).
+0.2 Defaults when unspecified
+
+Python 3.11 + FastAPI backend, simple React/Vite or plain HTML+HTMX frontend (must work on a phone browser), SQLite (Postgres only if told).
+Agents are defined as JSON in /agents and created/updated through the Bolna API by a script, never only by clicking in the dashboard, so the build is reproducible.
+Webhook endpoint must be idempotent and must wait for status completed (not call-disconnected) before reading transcript, cost, recording or extracted data.
+1. Honest status as of handoff
+
+Per the project files, no code has been recorded as built. STATUS.md was an empty template and idea.md ends with "This is a planning document. The next runnable step is the build" (waiting for the user to reply "go build"). If code exists outside these files, the user must say so and paste it; update this section first.
+
+Deadline: Oct 31, 2026 is the submission deadline and today's date is Oct 31. Assume hours, not days, remain. The exact cutoff time and time zone are not in the files: verify on https://www.bolna.ai/symphony/buildathon/submit now.
+
+Consequence: the v3 plan below (3 agents, live tool, risk engine, platform layer) was sized for 4 days. Use Section 16.2 (the "today" plan): Close agent + webhook + ledger + Watchtower on seeded data + minimal UI + a real call + video + deck + submit. Everything else is the roadmap slide.
+
+Fill in (user to confirm):
+
+Code written so far: [none recorded]
+Bolna API key / wallet funded / agent created: [unknown]
+Public HTTPS URL (Railway/Render/tunnel) for webhook: [unknown]
+Real pilot calls made: [0 recorded]
+Registered email used for the buildathon: [user to confirm; the submit form must use the same one]
+2. The event
+
+Bolna x Symphony Buildathon 2026. Tagline: "Bring any idea. Give it a voice." Build anything where voice is part of it (new product or voice layer on an existing one). No tracks. Virtual until the finale. Solo or team up to 4. Organised by Bolna (YC F25) with Y Combinator; finale is part of Symphony, India's flagship Voice AI summit.
+
+Official example ideas: voice tutor for kids, phone helpdesk for a local clinic, voice layer on an existing app, hands-free tool for drivers/field workers.
+
+Date
+
+Step
+
+Oct 15-31
+
+Apply and build
+
+Oct 31
+
+Project submission deadline
+
+Nov 3
+
+Shortlist; email interview invites
+
+Nov 5-7
+
+Online interviews
+
+Nov 8
+
+Finalists announced; top 10 get free Symphony tickets
+
+Nov 20
+
+Grand finale: top 3 pitch live, Abhyas Hall, The Lalit Ashok, Bengaluru (travel covered)
+
+Prizes: 1st Rs 50,000 + interview with Grey Baker (YC Partner); 2nd Rs 40,000; 3rd Rs 30,000 (total Rs 1.2 lakh). All builders get sponsor credits: Plivo (telephony, buildathon partner), Exotel, Sarvam, Cartesia, Deepgram, Kalpa Labs.
+
+Submission form (https://www.bolna.ai/symphony/buildathon/submit):
+
+Team size
+Full name, email (must match the registration email)
+Project name
+Project description: 1-2 lines, max 200 characters
+Submission link: GitHub repo, live app (Vercel etc.) or demo link
+Pitch deck or pitch video link: Google Drive or Luma, sharing set to "Anyone with the link"
+Judging criteria are NOT published. Do not pretend otherwise. Signals from Bolna's posts ("show your proof of work by making something people want", "build something real with voice AI", finalists chosen by interview). So optimise for:
+
+It works live on a real phone or browser call without hand-holding.
+A real person with a real problem (clear user, pain, before/after).
+Evidence: real call logs, transcripts, a number (calls completed, minutes saved, pilots done).
+Voice is essential, not decorative.
+India fit: Hindi/Hinglish/regional languages, phone-first users, low bandwidth.
+Founder clarity in a 2-minute pitch and the interview.
+Contacts/links: apply/submit https://www.bolna.ai/symphony/buildathon · dashboard https://platform.bolna.ai · symphony@bolna.ai · builders Slack (invite on the buildathon page; ask there for credits, Web Call SDK access, tool-call source IPs).
+
+3. Landscape: what already exists (do not duplicate)
+
+Entry
+
+Idea
+
+Notable engineering
+
+Swarm Local Negotiator ("Anti-Justdial"), github.com/dehshat/bolna-symphony-convoai
+
+Voice agents call local vendors and negotiate
+
+Bolna + Sarvam ASR/TTS + Exotel/Plivo; Railway; docs/SUBMISSION.md
+
+ChurnCall, github.com/sarthwa8/OnlyVoiceOctober
+
+Voice churn interviews turned into evidence for founders
+
+Strict module boundaries (only config.py reads env, only store.py touches files, only bolna.py knows Bolna shapes); invite flow; interview-simulator eval; pilot log with real numbers
+
+Bhaav, github.com/Pushkarmondal/bolna.ai-Buildathon
+
+Agent phones suppliers for small businesses, quotes in Hindi/Hinglish/Kannada, bargains
+
+"Lie-catcher" verifies every number before speaking; price memory chart; "be the supplier" browser mode for judges; Cloudflare Workers + D1; Vitest + Playwright
+
+Expect crowded areas: price negotiation, sales/lead calling, customer interviews, appointment booking.
+
+Lessons to copy:
+
+A judge-facing interactive mode ("call me now" or browser call) testable in 30 seconds.
+A guardrail layer that checks the agent's claims (numbers, prices, availability) before they are spoken.
+A pilot log with real calls and numbers. Proof of work beats polish.
+An eval harness (simulated callers, scripted edge cases) with pass rates.
+One module per concern so edits are safe and debugging is fast.
+A ready docs/SUBMISSION.md with exact form values and links.
+Our differentiation: we never negotiate or call suppliers for quotes. We capture internal operations data (stock ground truth from floor staff), validate it live, and add a transparent risk layer. The user is not the one typing; the system calls first.
+
+4. The product: Karkhana Voice (v3)
+
+"The ERP you never open, because it calls you." (working title)
+
+Submission description (197/200 chars, verified by count): Karkhana Voice: a voice-first control tower for small factories. It calls floor managers to confirm stock in Hinglish, watches supplier risk, warns before parts run out, dispatches breakdown calls.
+
+4.1 Problem
+
+Small manufacturers run on paper, Excel and WhatsApp because floor managers and store keepers won't type into Odoo/SAP. Stock data is late or wrong, shortages are found when a machine is idle, supplier dates are believed until they fail, money sits in over-ordered parts, breakdowns travel by shouting, shift knowledge lives in one head.
+
+4.2 Customer (hypotheses, not researched)
+
+Owner-run assembly/fabrication unit, ~10-100 employees, multi-part product (has a BOM), floor manager and store keeper who speak Hindi/Hinglish and use a phone all day. Segments to scout: pump/motor assembly, auto components, electrical panels, furniture hardware, packaging. Not the ICP: no BOM, well-adopted ERP, continuous process industries.
+
+Role
+
+Buyer?
+
+Gets
+
+Gives
+
+Owner / MD
+
+Yes
+
+Morning brief, daily sheet
+
+Approvals, owner notes
+
+Purchase manager
+
+Influencer
+
+Shortage alerts, draft POs
+
+Approvals
+
+Floor manager
+
+No
+
+Close call
+
+Receipts, output, scrap, handover
+
+Store keeper
+
+No
+
+Close call
+
+Counts
+
+Technician / supervisor
+
+No
+
+Alert call, handover briefing
+
+Ack, ETA
+
+Supplier (opt-in only)
+
+No
+
+ETA confirmation
+
+Delivery date
+
+Every person needs opted_in, consent_at, consent_method before any call. "Works on feature phones" is a claim to validate in the pilot, not assume.
+
+4.3 Four layers, three agents, one ledger
+
+Layer
+
+Job
+
+How
+
+1. Capture
+
+Ground truth without typing
+
+Close agent: shift-end reconcile (+ handover segment), voice entries, live validation
+
+2. Ledger
+
+One append-only record
+
+Every number traces to a call (execution_id) or audit entry
+
+3. Watchtower
+
+Supply risk, over-stock, reorder suggestions
+
+Transparent rules, no ML claim
+
+4. Action
+
+Calls the right person at the right time
+
+Open (morning brief, incoming handover), Alert (breakdown dispatch, supplier ETA)
+
+Loop: Capture feeds Ledger, Ledger feeds Watchtower, Watchtower triggers Action, Action produces new Capture.
+
+Agent
+
+Jobs
+
+Who
+
+Trigger
+
+Target length
+
+Close
+
+Shift-end reconcile by exception, output + BOM backflush, scrap, handover capture (3 prompts, supervisors), opening count on day 1
+
+Floor manager, store keeper, supervisor
+
+Scheduled at shift_end or "Call me now"
+
+60-120 s
+
+Open
+
+Morning brief (top 3 risks, yes/no approvals), incoming handover briefing (top 3, acked), owner note
+
+Owner, purchaser, incoming supervisor
+
+Daily schedule or button
+
+45-75 s
+
+Alert
+
+Breakdown dispatch (technician ack + ETA, escalate to supervisor), supplier ETA confirmation (opt-in only)
+
+Technician, supervisor, supplier
+
+Event: machine-down button, or Red part with open PO
+
+30-45 s
+
+Each agent takes role and mode in user_data. One webhook and one result handler cover all three.
+
+4.4 Core flows
+
+Close: reconcile by exception (the one flow that must work)
+
+Backend builds the expected-today list: POs due today + planned output from work orders and BOM.
+Agent says it is an AI and the call is recorded; reads at most 5 items, ranked by Watchtower score; rest roll to next call.
+Per item: "haan" confirms expected value; "nahi, 150 aaye" triggers an entry.
+Each entry calls validate_entry (Section 5) before the read-back.
+Output: "Pump-X kitne bane?" then backflush read-back through the BOM.
+Scrap/extras: max 2 re-asks, then offer a human.
+Supervisors only: three handover prompts (machine at risk, pending order, safety/quality issue).
+Final read-back of anything that changed; goodbye.
+Nothing is confirmed until the caller says yes to the read-back and validation passed. Day 1 for a new customer = opening count of the top 5 parts.
+
+Open: reads top 3 ranked risks (part, shortfall/slip, date that matters, yes/no ask). "Haan" stores an approval (a record, not a purchase). Owner may add one spoken note ("Shree Fasteners ka truck strike mein phasa hai") stored as a signal for that supplier. Incoming supervisors hear max 3 handover items and ack each.
+
+Alert, breakdown dispatch:
+
+"Machine down" button names a machine.
+Agent calls technician for ack + ETA.
+If terminal status is no-answer, busy, failed, or call completes without a clear ack, orchestrator calls the supervisor next per the escalation matrix.
+Timers stored in DB and polled (restart-safe). Demo: 60-90 s; production default: 10 min.
+Metric: minutes from report to ack. 3+ incidents on a machine in 7 days feeds the Watchtower.
+Alert, supplier ETA (Tier 2, consenting suppliers only): confirms a delivery date for an existing order. No price talk, no negotiation, no new orders. Updates the PO and triggers rescoring. If no real consenting supplier by Oct 30, role-play with a teammate and label it "simulated supplier".
+
+Hinglish register samples (full prompts still to be written):
+
+Opening: "Namaste Ramesh ji, main Karkhana Voice ka AI assistant bol raha hoon. Shift ka stock check karna hai, do minute lagenge."
+Reconcile: "Aaj gasket ke 500 aane the. Aaye?" Read-back: "To gasket, 500 piece, aaye. Sahi hai?"
+Backflush: "Pump-X 120 bane, to 120 gasket kharch hue honge. Sahi?"
+Brief: "Do cheezein is hafte production rok sakti hain. Pehli, gasket, 120 kam, aaj order karna padega. Approve karte hain?"
+Alert: "Machine 3 band hai. Aap aa rahe hain? Kitne minute mein?"
+5. Live validation via Bolna custom functions
+
+Per the v3 plan: Bolna custom functions follow OpenAI function-calling spec and call any HTTP endpoint (key: "custom_task", value with method, url, param, optional api_token, headers). Parameter specifiers: %(name)s string, %(name)i integer, %(name)f float. The agent can speak a pre_call_message while the call runs. (These came from Bolna's custom-function-schema page, https://www.bolna.ai/docs/tool-calling/custom-function-schema.md, which is not included in the four PDFs; re-check it before coding.)
+
+{
+
+  "name": "validate_entry",
+
+  "description": "Call after the caller states a quantity for a part, BEFORE reading it back. Returns whether to confirm, re-ask or flag.",
+
+  "pre_call_message": "Ek second.",
+
+  "parameters": {
+
+    "type": "object",
+
+    "properties": {
+
+      "session_id": {"type": "string", "description": "The session id given in your instructions"},
+
+      "part_alias": {"type": "string", "description": "The part as the caller said it"},
+
+      "qty": {"type": "integer", "description": "Quantity the caller stated"},
+
+      "unit": {"type": "string", "description": "Unit the caller stated, e.g. piece, kg"}
+
+    },
+
+    "required": ["session_id", "part_alias", "qty"]
+
+  },
+
+  "key": "custom_task",
+
+  "value": {
+
+    "method": "POST",
+
+    "url": "https://YOUR-HOST/tools/validate_entry",
+
+    "api_token": "Bearer ${TOOL_TOKEN}",
+
+    "param": {"session_id": "%(session_id)s", "part_alias": "%(part_alias)s", "qty": "%(qty)i", "unit": "%(unit)s"}
+
+  }
+
+}
+
+Response contract: {"status": "ok" | "confirm" | "reject", "part": "Gasket 50mm", "say": "short Hinglish sentence"}. Agent speaks say and obeys status: ok goes to read-back, confirm re-asks digit by digit, reject re-asks part/unit. get_stock(session_id, part_alias) is the same pattern (Tier 2 voice stock query).
+
+Rules:
+
+Endpoint answers well under 1 s. On timeout the agent proceeds to read-back and the after-call guardrail holds the entry as needs_review. Live validation improves accuracy; it is never the only defence.
+Authenticate with the api_token Bearer value. Do not rely on IP allowlists (tool-call source IPs undocumented).
+Correlation: pass session_id in user_data, reference it in the prompt ({{session_id}}); the LLM fills it as a parameter.
+Placement inside agent_config via API is inferred (from the documented transfer_call pattern under tools_config.api_tools.tools + tools_params). Verify once: create the tool in the dashboard, read the agent back via API, copy its JSON into agent.json. (The create-agent OpenAPI in the PDFs only schema-defines transfer_call under api_tools.)
+Guardrail rules (live and after-call, shared in guardrails.py):
+
+Rule
+
+Action
+
+Entry would make stock negative
+
+confirm, then needs_review if unchanged
+
+Quantity over 10x typical_qty
+
+confirm digit by digit
+
+Unit differs from part unit
+
+reject, re-ask the unit
+
+Unknown part/alias
+
+reject, offer the 3 closest aliases
+
+Same part and quantity within minutes
+
+confirm ("pehle wala hi hai?")
+
+15 vs 50 ambiguity
+
+Read back as words and digits: "pandrah, yaani 15"
+
+6. Watchtower (rules-based, every score shows components)
+
+Runs after every confirmed event and on a schedule. Hinglish number handling lives in the parser/guardrails, not in the Watchtower.
+
+Signals: slack days (shortage engine); supplier slip (on-time rate, avg slip days, last 5 POs, min 3 needed); single-source exposure; data confidence (no confirmed count for 7+ days, or >30% reconcile mismatches); machine reliability (3+ incidents in 7 days); unacked handover items; owner notes (delay days for named suppliers, with expiry). External feeds (weather/news/commodity) are not built and not verified; signals.py is the plug-in point.
+
+Math
+
+effective_eta(PO)      = eta_date + avg_slip_days(supplier) + owner_note_delay_days
+
+effective_lead(part)   = lead_time_days + avg_slip_days(supplier) + owner_note_delay_days
+
+first_short_date(part) = first date where projected stock < 0
+
+slack_days(part)       = (first_short_date - today) - effective_lead(part)   # no PO covers it
+
+                         need_date - effective_eta(PO)                       # PO exists, may be late
+
+projected(part, d)     = on_hand + sum(PO qty with effective_eta <= d)
+
+                         - sum(WO qty x qty_per_unit with start_date <= d)
+
+Work orders consume on start_date (conservative).
+
+Risk score (0-100, thresholds tunable)
+
+Component
+
+Rule
+
+Points
+
+Slack
+
+>=5: 0 · 2-4: 15 · 0-1: 35 · <0: 50
+
+0-50
+
+Supplier slip
+
+on-time <60%: 20 · 60-80%: 10 · insufficient data: 5
+
+0-20
+
+Single-source
+
+one supplier only
+
+15
+
+Data confidence
+
+stale count or high mismatch
+
+15
+
+Bands: Red >= 50, Amber 25-49, Green < 25. Red: top of list + in the Open brief (top 3) + supplier ETA call if PO open (Tier 2). Amber: listed; next brief only if <3 Reds; Close call asks for a fresh count. Green: collapsed, silent.
+
+Lanes added in v3
+
+Capital (over-stock): (on_hand + open PO qty) / max(avg_daily_use, planned_daily_use) > 60 days flags "Over" with money tied up (needs optional unit_cost). Needs 14+ days of usage, else "insufficient data". Action: "defer this PO". 60 is a starting setting.
+Reorder suggestion: suggested_qty = max(0, avg_daily_use x (effective_lead + safety_days) - (on_hand + open_PO)) + planned_WO_shortfall, safety_days default 2. Suggestion only, never an automatic order.
+Supplier scorecard: on-time rate, avg slip, lead-time drift vs master, last 5 POs.
+6.1 Synthetic demo dataset ("Aarav Pumps", product Pump-X, WO-2041: 500 units, starts day +4; today = day 0). Label as synthetic everywhere.
+
+SKU
+
+Part (spoken aliases)
+
+Per unit
+
+On hand
+
+Open PO
+
+Lead (d)
+
+Supplier history
+
+P-101
+
+Casing ("casing", "body")
+
+1
+
+520
+
+none
+
+7
+
+2 suppliers
+
+P-102
+
+Impeller ("impeller", "pankha")
+
+1
+
+450
+
+100 due day +2
+
+7
+
+on time 5/5
+
+P-103
+
+Shaft ("shaft", "rod")
+
+1
+
+610
+
+none
+
+5
+
+2 suppliers
+
+P-104
+
+Gasket 50mm ("chhota gasket")
+
+1
+
+380
+
+none
+
+4
+
+single source
+
+P-105
+
+M8 bolt ("M8 bolt", "bolt")
+
+4
+
+1,700
+
+500 due day +2
+
+2
+
+on time 2/5, avg 3 days late
+
+P-106
+
+Bearing 6204 ("bearing")
+
+2
+
+1,150
+
+none
+
+5
+
+2 suppliers
+
+P-107
+
+Mechanical seal ("seal")
+
+1
+
+540
+
+none
+
+6
+
+single source, last counted 9 days ago
+
+P-108
+
+Motor 1HP ("motor")
+
+1
+
+520
+
+none
+
+10
+
+2 suppliers
+
+P-109
+
+Packing carton ("carton", "dabba")
+
+1
+
+9,000
+
+none
+
+3
+
+2 suppliers, ~50 used/day
+
+Expected result: 2 Red, 1 Amber, 6 Green, 1 Over-stock flag.
+
+Part
+
+Score
+
+Gasket
+
+slack 0 (35) + single-source (15) = 50 Red ("order today")
+
+M8 bolt
+
+PO day +2, supplier avg 3 days late so effective ETA +5 vs need +4 → slack -1 (50) + on-time 40% (20) = 70 Red
+
+Mechanical seal
+
+single-source (15) + stale count (15) = 30 Amber
+
+Packing carton
+
+180 days of cover: Green on risk, Over in capital lane
+
+Known nuances for the unit tests (pin these explicitly):
+
+The worked example scores gasket and seal with 0 supplier-slip points, though the rubric gives 5 for "insufficient data". Adding 5 gives gasket 55 (Red) and seal 35 (Amber), so bands do not change, but decide which rule the tests encode and write it down.
+Impeller has a PO with slack 2 (need day +4, eta day +2), so it scores 15, still Green.
+Sample brief line: "Teen cheezein dhyan mein hain. Bolt ka PO 2 din ka bola hai, par ye supplier aam taur par 3 din late deta hai."
+
+7. Data model (SQLModel on SQLite; every table has org_id; only store.py touches the DB)
+
+Table
+
+Key fields
+
+orgs
+
+id, name, settings (thresholds, escalation matrix)
+
+parts
+
+id, org_id, sku, name, aliases (JSON), unit, unit_cost (opt), reorder_point, lead_time_days, typical_qty
+
+products, bom
+
+product, part, qty_per_unit
+
+work_orders
+
+id, product_id, qty, start_date, due_date
+
+suppliers, part_suppliers
+
+contact, language, opted_in, consent_at, consent_method, which parts each supplies
+
+purchase_orders
+
+id, part_id, qty, supplier_id, promised_date, eta_date, received_date, status, suggested (bool)
+
+people
+
+id, name, phone, role, language, shift_end, call_window, opted_in, consent_at, consent_method
+
+calls
+
+execution_id (PK), agent, mode, person_id, session_id, status, raw_payload, prompt_version, started_at, completed_at, duration, total_cost, cost_breakdown
+
+events
+
+id, execution_id, type, part_id, qty, unit, state (proposed/confirmed/rejected/needs_review), source (voice/manual/import), guardrail_flags, ts
+
+incidents
+
+id, machine, reported_at, ack_at, escalated_at, resolved_at, assigned_to, escalation_level
+
+handover_items
+
+id, text, severity, from_person, acked_by, acked_at
+
+approvals
+
+id, part_id, decision, by_person, ts
+
+signals
+
+id, kind, supplier_id, delay_days, expires_at, source_execution_id
+
+risk_scores
+
+id, part_id, ts, score, band, components (JSON), reason, lane (risk/capital)
+
+demo_limits
+
+phone_hash, ip_hash, count, window_start
+
+audit_log
+
+id, actor, action, target, ts
+
+Stock on hand = sum of confirmed events. Events are appended, never edited. Manual edits are new events with source = manual + an audit_log row.
+
+8. Stack, repo layout, conventions
+
+Stack: Bolna (agents, calls, webhooks, extraction) · telephony: Bolna default number first, Plivo/Exotel credits later · Python 3.11, FastAPI, httpx, pydantic-settings, SQLModel + SQLite · single-page React (Vite) OR plain HTML + HTMX, phone-friendly · deploy on Railway or Render (public HTTPS needed for webhook; use ngrok/cloudflared locally) · pytest for logic + one end-to-end script that places a real call and waits for completed.
+
+Repo layout
+
+/agents/close/{agent.json,prompt.md}
+
+/agents/open/{agent.json,prompt.md}
+
+/agents/alert/{agent.json,prompt.md}
+
+/agents/tools/{validate_entry.json,get_stock.json}
+
+/apps/api/config.py          # ONLY place env vars are read
+
+/apps/api/bolna.py           # ONLY place that knows Bolna request/response shapes
+
+/apps/api/store.py           # ONLY place that touches the DB
+
+/apps/api/guardrails.py      # shared by live tool and after-call checks
+
+/apps/api/shortage.py
+
+/apps/api/watchtower.py      # risk lane, capital lane, reorder, scorecard
+
+/apps/api/signals.py
+
+/apps/api/parser.py
+
+/apps/api/orchestrator.py    # schedules, escalation, retries, stuck-call reconciler
+
+/apps/api/importer.py
+
+/apps/api/abuse.py           # demo limits + wallet kill-switch
+
+/apps/api/routes/            # calls, webhooks, tools, incidents, dashboard, export, daily sheet
+
+/apps/web/                   # Control Room, judge mode, admin config, manual correction
+
+/scripts/{create_agent.py,place_test_call.py,seed_demo.py}
+
+/eval/
+
+/docs/{SUBMISSION.md,pilot-log.md,CONSENT.md,ONBOARDING.md}
+
+/STATUS.md  .env.example  README.md
+
+Conventions
+
+Webhook handler: verify payload shape, idempotent by execution_id, store raw payload, return 200 fast, process in background, parse only when status == completed. Escalation also reacts to no-answer, busy, failed.
+All prompts live in /agents/*/prompt.md, versioned; log prompt version on every call. Log every execution_id with timestamps; keep raw transcripts for the pilot log.
+Secrets only in env vars; repo is public, .env gitignored.
+Env vars: BOLNA_API_KEY, PUBLIC_BASE_URL, DATABASE_URL, WEBHOOK_SECRET, TOOL_TOKEN, BOLNA_AGENT_ID_CLOSE, BOLNA_AGENT_ID_OPEN, BOLNA_AGENT_ID_ALERT, PARSER_PROVIDER, PARSER_MODEL, PARSER_API_KEY, DEMO_ESCALATION_SECONDS, DEMO_DAILY_CAP, WALLET_FLOOR.
+Parser: parser.py turns a completed transcript into proposed events via an LLM chosen by env vars (no model string hardcoded), with a deterministic fallback that reads a fixed-format confirmation line the prompt makes the agent say. Provider/model not verified: set in .env.
+9. Bolna API reference (verified from docs fetched Oct 27, 2026)
+
+Base: https://api.bolna.ai · Auth: Authorization: Bearer <BOLNA_API_KEY> (missing/invalid → 401 Access denied).
+
+9.1 Gotchas that break generated code
+
+POST /v2/agent returns 201 {agent_id, state:"created", version_id} (field is state, not status). Body must be wrapped {"agent_config": {...}, "agent_prompts": {"task_1": {"system_prompt": "..."}}}. v1 /agent returns 200 and is the old path; use v2.
+POST /batches returns 201, multipart/form-data with agent_id + CSV file. POST /batches/{id}/schedule returns 200.
+scheduled_at must use +00:00, never Z (Z causes 500). Must be >= 2 min in the future; Bolna rounds up to the next 10-minute mark. (Batch scheduling only; not needed for the today plan.)
+Wait for completed, not call-disconnected. At disconnect, conversation_duration, total_cost, recording_url, extracted_data are null/0. completed arrives a few seconds later.
+toolchain.pipelines is an array of arrays: [["transcriber","llm","synthesizer"]].
+GET /batches/{id}/executions returns a bare array.
+from_phone_number is optional on POST /call (account default used). Agents on telephony trunk must pass a trunk number.
+Webhooks come from 13.203.39.153, 13.126.9.249, 13.202.133.53. Allow all three if firewalled.
+GPT-5-series models require "temperature": 1 (400 For GPT-5 models, temperature must be 1); the field defaults to 0.1. gpt-4.1-mini with temperature 0.2 is accepted per the docs' LLM list.
+LLM provider/model is not validated at creation; a wrong value only fails when a call runs. Transcriber/synthesizer/telephony providers are validated (400 Invalid value for provider).
+Transcriber model + language validated as a pair; language is a plain ISO 639-1 code ("hi", never "hi-IN", even for Sarvam).
+Synthesizer provider_config.language is required for cartesia, sarvam, smallest, rime, azuretts, gemini, soniox, polly; not accepted by elevenlabs, deepgram, openai; optional on maya, kalpa.
+Transcriber keywords accept word:boost but the boost is stripped at save time; terms still apply (Deepgram sends as keyterm on nova-3; Sarvam reads on saaras:v4 only).
+The update endpoint: AGENTS.md shows PATCH /v2/agent/{agent_id} with {"agent_config": {...}}. The older cheatsheet listed PUT. Which one to use for full updates is not confirmed in the PDFs; check the update-agent API page.
+The cheatsheet listed a webhook task type, but the Create-agent OpenAPI enum for task_type is only conversation, extraction, summarization. Treat webhook as not verified.
+9.2 Execution lifecycle
+
+queued → initiated → ringing → in-progress → call-disconnected → completed Other terminal: no-answer, busy, failed, canceled, stopped, error, balance-low. Terminal set (safe to read data): {completed, no-answer, busy, failed, canceled, stopped, error, balance-low}. Batch lifecycle: created → scheduled → running → completed (or stopped, failed).
+
+9.3 Endpoints
+
+Op
+
+Method
+
+Path
+
+Returns
+
+Create agent
+
+POST
+
+/v2/agent
+
+201 {agent_id, state, version_id}
+
+Patch agent
+
+PATCH
+
+/v2/agent/{agent_id}
+
+per AGENTS.md; see 9.1 #14
+
+Make call
+
+POST
+
+/call
+
+200 {message:"done", status:"queued", execution_id}
+
+Get execution
+
+GET
+
+/executions/{id}
+
+execution object
+
+Create batch
+
+POST
+
+/batches
+
+201 {batch_id, state}
+
+Schedule batch
+
+POST
+
+/batches/{id}/schedule
+
+200
+
+Batch executions
+
+GET
+
+/batches/{id}/executions
+
+bare array
+
+List numbers
+
+GET
+
+/phone-numbers/all
+
+array
+
+Inbound setup
+
+POST
+
+/inbound/setup
+
+{url, phone_number, id}
+
+User info / wallet
+
+GET
+
+/user/me
+
+{id,name,email,wallet,concurrency:{max,current}}
+
+List TTS providers / voices
+
+GET
+
+see "List TTS providers" and "List voices" API pages
+
+resolve valid model + voice_id pairs before creating an agent
+
+/get agents list paths (/v2/agent, /v2/agent/all) came from the older cheatsheet, not the PDFs: not verified.
+
+POST /call body: agent_id, recipient_phone_number (E.164, e.g. +919876543210), optional from_phone_number, optional user_data (object; nested objects/arrays allowed). Prompt variables use {{variable}} and dotted paths ({{customer.name}}); the first segment must be a top-level user_data key; a timezone key in user_data fixes date/time values. (From the Using-context page, https://www.bolna.ai/docs/prompting/using-context.md; re-check before coding.)
+
+9.4 Provider values accepted at creation
+
+LLM (llm_config.provider): openai (recommended gpt-5.4-mini; also gpt-5.6-sol/terra/luna, gpt-5.5, gpt-5.4, gpt-4.1, gpt-4.1-mini, gpt-4o), azure-openai/azure, anthropic (claude-sonnet-5, claude-opus-4-8, claude-haiku-4-5-20251001, claude-fable-5), google (gemini-2.5-flash, gemini-3.7-flash, etc.), deepseek (deepseek-v4-flash/-pro), openrouter (vendor/model), custom (needs base_url + family), plus LiteLLM-routed groq, cohere, together, fireworks, deepinfra, perplexity, anyscale, ollama, vllm, ola.
+Transcriber: deepgram (nova-3, nova-2, Flux flux-general-en), sarvam (saaras:v4; saaras:v3; v2.5 variants deprecated), openai (gpt-realtime-whisper), azure, elevenlabs (scribe_v2_realtime), assembly (universal-3-6-pro; value is assembly, not assemblyai), gladia (solaria-1), smallest (pulse), soniox (stt-rt-v5), gemini, google.
+Synthesizer: elevenlabs (eleven_turbo_v2_5, eleven_flash_v2_5, eleven_multilingual_v2, eleven_v3_conversational, eleven_v4_turbo), cartesia (sonic-3.5, sonic-3.6, sonic-3), sarvam (bulbul:v4-flash, bulbul:v3), smallest (lightning_v3.1), deepgram (aura-2), polly (sent as engine), azuretts (not azure), rime, maya, kalpa, soniox, openai, gemini (no usable model currently), custom.
+Telephony (tools_config.input/output.provider): twilio, plivo, exotel, vobiz, trunk, sip-trunk (legacy). Format wav for twilio/plivo/exotel/vobiz, linear16 for trunk, ulaw for sip-trunk.
+Agent types (llm_agent.agent_type): simple_llm_agent (default), knowledgebase_agent, graph_agent, realtime_agent. agent_flow_type stays "streaming".
+9.5 Useful agent_config / task_config knobs (verified in the Create-agent OpenAPI)
+
+webhook_url, calling_guardrails.call_start_hour / call_end_hour (0-23, recipient's timezone), call_summary_enabled (default false), task_config: hangup_after_silence (10), call_terminate (90), incremental_delay (400), number_of_words_for_interruption (2), backchanneling, check_if_user_online (true), trigger_user_online_message_after (10), voicemail (+ detection fields), noise_cancellation_level (60-100 or null), welcome_message_delay (0-1000 ms), call_hangup_message, dtmf_enabled, ambient_noise. Synthesizer: caching (default true), pronunciation_rules (ElevenLabs; Cartesia sonic-3+). multilingual_config needs >= 2 languages, each with synthesizer, optional transcriber and system_prompt.
+
+9.6 Webhooks
+
+Set webhook_url inside agent_config (or dashboard → agent → Extractions tab → Webhook Configuration; can limit "Trigger on statuses", add custom headers, "Send test" posts a sample completed payload). Endpoint must be public HTTPS and answer 200 quickly. Bolna POSTs on each status change (scheduled → queued → in-progress → completed, plus call-disconnected). Payload = Get-Execution response shape. Pre-call webhooks: if a tool sets pre_call_webhook_param without its own pre_call_webhook_url, it posts to the agent-level URL with status in-progress and extra fields; distinguish by status/fields. Delivery health is visible in dashboard Analytics → Webhook delivery (failed deliveries downloadable as CSV).
+
+9.7 Completed execution (shape, truncated)
+
+id, agent_id, status, termination_reason, conversation_duration, total_cost, transcript (string like "assistant: ...\nuser: ..."), user_number, agent_number, extracted_data, telephony_data{duration, recording_url, call_type, provider, hangup_by, hangup_reason}, cost_breakdown{platform, network, transcriber, llm, synthesizer}, latency_data{time_to_first_audio}. summary / extracted_data.General.Call Summary exist only if call_summary_enabled is on.
+
+9.8 Common 400s
+
+agent_config is required (wrap it) · tasks is required · toolchain.pipelines must be array of arrays · GPT-5 temperature · reasoning_effort ... not supported for model · Invalid value for provider · Model ... not available for provider · Provided voice ... not available for the provider · Provided language ... not available for the model · Tools Config > Voice > Language: This field is required.
+
+9.9 Minimal working agent body (from Bolna docs; swap in Hinglish stack after testing)
+
+{
+
+  "agent_config": {
+
+    "agent_name": "Karkhana Close",
+
+    "agent_welcome_message": "Namaste, main Karkhana Voice ka AI assistant bol raha hoon. Ye call record hoti hai. Shift ka stock check karna hai, do minute lagenge.",
+
+    "webhook_url": "https://YOUR-HOST/webhooks/bolna",
+
+    "tasks": [{
+
+      "task_type": "conversation",
+
+      "toolchain": {"execution": "sequential", "pipelines": [["transcriber", "llm", "synthesizer"]]},
+
+      "tools_config": {
+
+        "llm_agent": {
+
+          "agent_type": "simple_llm_agent",
+
+          "agent_flow_type": "streaming",
+
+          "llm_config": {"provider": "openai", "model": "gpt-4.1-mini", "max_tokens": 150, "temperature": 0.2}
+
+        },
+
+        "synthesizer": {
+
+          "provider": "elevenlabs",
+
+          "provider_config": {"voice": "Nila", "voice_id": "V9LCAAi4tTlqe9JadbCo", "model": "eleven_turbo_v2_5"},
+
+          "stream": true, "buffer_size": 250, "audio_format": "wav"
+
+        },
+
+        "transcriber": {"provider": "deepgram", "model": "nova-3", "language": "en", "stream": true, "encoding": "linear16", "sampling_rate": 16000, "endpointing": 250},
+
+        "input": {"provider": "plivo", "format": "wav"},
+
+        "output": {"provider": "plivo", "format": "wav"}
+
+      },
+
+      "task_config": {"call_terminate": 90, "hangup_after_silence": 10}
+
+    }]
+
+  },
+
+  "agent_prompts": {"task_1": {"system_prompt": "<contents of /agents/close/prompt.md>"}}
+
+}
+
+Notes: language: "en" is the docs' example; for Hinglish test "hi" with nova-3 (check the pair is accepted: 400 Provided language ... not available for the model is possible). Voice Nila / V9LCAAi4tTlqe9JadbCo is from AGENTS.md; Angelica / IkSv4tkouLJ6kYsQA7XD is from the quickstart. Confirm with List voices. The newer docs' recommended model is gpt-5.4-mini (needs temperature: 1); gpt-4.1-mini is the flat-rate default from v3 planning.
+
+9.10 Minimal polling loop (Python, per docs)
+
+TERMINAL = {"completed","no-answer","busy","failed","canceled","stopped","error","balance-low"}
+
+while True:
+
+    data = get_execution(exec_id)
+
+    if data["status"] in TERMINAL:
+
+        break          # only now read duration, cost, recording, transcript
+
+    time.sleep(5)
+
+9.11 Pricing and models (snapshot; re-check in the dashboard)
+
+Headline voice rate $0.06/min (~Rs 5.52) at standard tiers, ~4.5 cents at larger top-ups, Pilot plan ~4.2 cents ($500 for 12,000 min). Telephony + platform fee are extra and not verified; measure from cost_breakdown.
+"Preferred models" flat-rate snapshot: ASR nova-2, nova-3, azure, saarika:v2.5, saaras:v2.5; LLM gpt-4.1-mini, gpt-4o-mini (+ Azure variants); TTS eleven_turbo_v2_5, eleven_flash_v2_5, bulbul:v2, sonic-english, sonic-3. Sarvam has deprecated saarika:v2.5/saaras:v2.5; saaras:v4/bulbul:v3 are not on the snapshot. Check the Add Funds panel on the team's own account before choosing. Off-list models bill separately.
+9.12 Helper tooling (names verified from llms.txt; exact flags NOT verified)
+
+Bolna CLI (bolna agents create --file, bolna calls view, bolna docs search, bolna docs fetch), MCP server at mcp.bolna.ai (manage agents, pull transcripts, run batches, place calls from chat), Bolna Skills for AI coding assistants, AGENTS.md at https://www.bolna.ai/docs/AGENTS.md. Run bolna docs search or fetch the pages for exact usage.
+
+9.13 NOT verified: do not code against these until checked
+
+Item
+
+Needed for
+
+How to check
+
+Fallback
+
+Custom-function placement via API in agent_config
+
+validate_entry in agent.json
+
+Create in dashboard, read agent back, copy
+
+Dashboard-created tool + documented manual step
+
+Context-variable syntax inside tool param
+
+Cleaner session correlation
+
+Context Variables page
+
+Pass session_id via prompt
+
+How tool response is surfaced to the LLM
+
+Live validation
+
+First test call
+
+After-call guardrail
+
+Tool-call source IPs
+
+Network allowlisting
+
+Builders Slack
+
+Bearer token only
+
+Extractions via API
+
+Structured entries
+
+Extractions page
+
+Server-side transcript parser (default)
+
+Outbound DTMF
+
+Keypad confirm
+
+DTMF page
+
+Voice read-back
+
+Transfer Call setup via API
+
+Human handoff
+
+Transfer Call guide
+
+Log handoff_requested, human calls back
+
+Custom webhook headers via API (dashboard path is verified)
+
+Webhook secret
+
+Agent API page
+
+Set in dashboard
+
+Inbound numbers and cost
+
+Operator calls in
+
+Phone numbers pages
+
+Outbound only
+
+Web Call SDK access
+
+Judge browser call
+
+Ask in builders Slack
+
+"Call me now" phone button
+
+Hindi/Hinglish model + voice-id pairs
+
+Quality
+
+List TTS providers + List voices
+
+Test 2 combos on real calls
+
+Telephony fee, platform fee amounts
+
+Pricing
+
+Dashboard Call History
+
+Measure from cost_breakdown
+
+Update-agent verb (PUT vs PATCH) and GET agent list paths
+
+create_agent.py upsert
+
+Update-agent API page
+
+Create-only script, store agent_id in env
+
+webhook task type
+
+Post-call webhook task
+
+Agent API page
+
+Use agent-level webhook_url
+
+10. Voice prompt skeleton (use for every agent)
+
+Role + who you serve → AI disclosure in the first line (and "call is recorded") → goal of the call in one sentence → conversation steps as a short numbered flow → rules (1-2 sentences per turn, one question at a time, read back numbers, mirror the caller's language, Hinglish OK) → what to do on silence, on confusion (max 2 re-asks), on abuse, on "talk to a human" → hard limits (never promise or say X; no OTP/card/Aadhaar/bank details, no wages, no price negotiation) → how to end the call and what summary data to capture (fixed-format confirmation line so the deterministic parser can read it).
+
+Extra rules for Karkhana agents: at most 5 items per Close call; read numbers back as words and digits for 15/50-type ambiguity; nothing is confirmed until the caller says yes to the read-back; if the tool returns status:"confirm" re-ask digit by digit; if the tool times out, proceed to read-back (after-call guardrail will hold the entry as needs_review).
+
+Default agent stack (flat-rate): Deepgram nova-3 (language set explicitly), gpt-4.1-mini (temp 0.2, max_tokens 150), ElevenLabs eleven_turbo_v2_5, telephony plivo. A/B once: Sarvam saaras:v4 for Hinglish accuracy (off the snapshot list; measure accuracy and the cost line).
+
+11. Feature triage (24 candidates)
+
+Effort: S < half a day, M ~ 1 day, L multi-day.
+
+#
+
+Feature
+
+Value
+
+Effort
+
+Dep risk
+
+Tier
+
+F1
+
+Live validate_entry custom function
+
+High
+
+M
+
+Placement inferred
+
+0
+
+F2
+
+Judge-mode abuse controls (opt-in checkbox, per-number + per-IP limits, global daily cap, wallet kill-switch via GET /user/me)
+
+Critical
+
+S
+
+Verified
+
+0
+
+F3
+
+CSV importer (parts, BOM, people, stock, POs)
+
+High
+
+S
+
+None
+
+0
+
+F4
+
+Over-stock lane
+
+High
+
+S
+
+None
+
+1
+
+F5
+
+Reorder suggestion
+
+High
+
+S
+
+None
+
+1
+
+F6
+
+Supplier scorecard
+
+Medium
+
+S
+
+None
+
+1
+
+F7
+
+Escalation matrix + per-person call windows
+
+High
+
+S
+
+calling_guardrails verified
+
+1
+
+F8
+
+Usage/cost metering from cost_breakdown
+
+High
+
+S
+
+Verified
+
+1
+
+F9
+
+Printable daily sheet
+
+High
+
+S
+
+None
+
+1
+
+F10
+
+CSV export of ledger
+
+High
+
+S
+
+None
+
+1
+
+F11
+
+Voice stock query ("gasket kitna bacha?")
+
+High wow
+
+S
+
+Same tool pattern
+
+2
+
+F12
+
+Voice work-order intake
+
+High
+
+M
+
+None
+
+2
+
+F13
+
+Outbound webhooks to customer URL (Zapier/Make/n8n)
+
+High
+
+S
+
+None
+
+2
+
+F14
+
+Draft PO page (printable)
+
+High
+
+S
+
+None
+
+2
+
+F15
+
+Consumption variance (BOM vs actual)
+
+Medium
+
+S
+
+None
+
+2
+
+F16
+
+Scrap reason capture + Pareto
+
+Medium
+
+S
+
+None
+
+2
+
+F17
+
+Preventive-maintenance reminder calls
+
+Medium
+
+S
+
+Reuses Alert
+
+2
+
+F18
+
+Login, roles, per-customer separation
+
+High
+
+M
+
+org_id in model
+
+Next 30 days
+
+F19
+
+Billing (UPI)
+
+High
+
+M
+
+Not verified
+
+Later
+
+F20
+
+WhatsApp summaries/alerts
+
+High
+
+M
+
+Not verified
+
+Later
+
+F21
+
+ERP/Tally adapters
+
+High
+
+L
+
+Not verified
+
+Later
+
+F22
+
+External signal feeds
+
+Medium
+
+M
+
+Not verified
+
+Later
+
+F23
+
+More languages via multilingual_config
+
+High
+
+M
+
+Voice pairs unverified
+
+Later
+
+F24
+
+Inbound calls, graph agents
+
+Medium
+
+M
+
+Not verified
+
+Later
+
+Original scope statement: ship Tier 0 + Tier 1 plus at most two Tier 2 by Oct 31. Given today is Oct 31, see Section 16.2 for the cut.
+
+12. Platform layer, security, compliance (design; build only what fits)
+
+Reliability: stuck-call reconciler (any call not terminal after 10 min → poll GET /executions/{id}); retries (missed Close call retried up to 2 times inside call_window, then flagged); voicemail-detected calls write nothing and retry; idempotency (one row per execution_id); manual override in the Control Room (source = manual, audit_log).
+
+Observability/cost: per-call cost rolled up per person/agent/org (the cost-per-factory-month number); completion, retry and voicemail rates; average length; structured logs keyed by execution_id with PII redacted.
+
+Security: webhook source-IP allowlist (three IPs) + custom header secret set on the dashboard webhook card; tools: Bearer api_token, constant-time compare, rate limit; secrets only in env; every table carries org_id with a test proving cross-org isolation; nightly copy of the SQLite file.
+
+Judge-mode abuse controls (F2, mandatory because the buttons dial real phones): visitor types their own number and ticks "I agree to receive this demo call"; max 2 demo calls per number per day, per-IP limit, global daily cap; daytime window via calling_guardrails; kill-switch pauses demo calls if wallet < floor (read via GET /user/me); no OTP/card/ID ever requested by voice.
+
+Compliance (not legal advice; lawyer review before commercial launch):
+
+Consent first (opted_in, consent_at, consent_method); suppliers opted in individually; agent says it's an AI in the first line and that the call is recorded and why.
+DPDP: Rules notified Nov 2025; core duties reported to start mid-May 2027 (sources say 13 or 14 May). Voices are personal data. Design now for plain-language consent notice, purpose limitation, easy withdrawal, grievance contact, retention setting (docs/CONSENT.md).
+Retention hypothesis: raw transcripts/recordings 90 days, then only structured events. Deletion on request, logged.
+No sensitive data by voice; no wages/pay computation; human handoff on every call (logged handoff_requested); no lock-in (CSV export).
+Telecom rules for commercial calling: not researched.
+13. Market, pricing, unit economics (all hypotheses are labelled)
+
+Market (cited with caveats; we claim no TAM): ~9.16 crore MSMEs registered on Udyam/Udyam Assist as of July 31, 2026 (Ministry of MSME data as reported), ~1.83 crore manufacturing, nearly all micro (~9.11 crore micro, 5.4 lakh small, 41.7 thousand medium). MSMEs ≈ 31.1% of GDP, 35.4% of manufacturing output, 48.58% of exports (Jan 2026, secondary report). Caveats: counts differ across sources/dates (another report says 8.7 crore as of June 2026); registered ≠ active; Udyam Assist includes informal micro units. Reachable market (multi-part product, phone-using floor team, enough scale to feel stockouts) is not researched; build bottom-up from one cluster.
+
+Competitive set (categories only; feature research still to do):
+
+Alternative
+
+Why used
+
+Our edge
+
+Paper, Excel, Tally, WhatsApp
+
+Free, familiar
+
+Voice capture removes the entry gap; adds risk warnings
+
+Odoo, ERPNext, Zoho, SAP B1-style ERPs
+
+Real inventory/purchasing
+
+They need typing; we feed them (CSV now, adapters later)
+
+Generic voice-agent builders
+
+Flexible
+
+Horizontal; we ship BOM-aware ledger, live validation, Watchtower
+
+Other buildathon entries
+
+n/a
+
+They call suppliers/customers; we capture internal ops data
+
+Positioning: "Not another ERP. The layer that makes your ERP, or your Excel, true, and the early warning that tells you what stops production, by phone, in your language."
+
+GTM hypotheses: 3 free 14-day design-partner pilots via owner networks and one industrial cluster, in exchange for quotes and permission to cite; channels to test: accountants/Tally consultants, cluster associations, the Bolna builders community; weekly 15-minute Watchtower review per owner. North-star: share of Red parts resolved before a stockout.
+
+Pricing hypotheses (unvalidated): Design partner free 14 days (1 shift, full Watchtower) · Starter ~Rs 3,000/mo (Close call, Control Room, shortage engine, daily sheet) · Growth ~Rs 6,000/mo (+ Open and Alert, lanes, up to 3 shifts, outbound webhooks) · Add-on pass-through (supplier ETA calls).
+
+Unit economics (illustration only): assumed ~6 min/day (Close 1.5 × 2 shifts, handover 0.5 × 2, Open 1, Alert ~1) × 26 days = 156 min ≈ Rs 861/month at the headline voice rate, before telephony, platform fee, parser LLM, hosting. One $500 Pilot plan (12,000 min) ≈ 77 factory-months at that usage. Rule: price at ≥3x measured all-in cost per factory-month.
+
+ROI model (placeholders): monthly value = stockout hours avoided × cost/idle hour + breakdown minutes saved × cost/idle minute × incidents + working capital freed × monthly cost of capital + admin hours saved × hourly wage − subscription.
+
+Proof to collect, never invent: one stockout story with a rupee figure; time from breakdown to technician knowing; seconds per stock update typed vs voice; one supplier whose promised vs actual dates differ; money tied up in one over-ordered part.
+
+14. Evidence plan and KPIs
+
+Pilot log (docs/pilot-log.md): date, role (no private details), agent + mode, execution_id, outcome, one quote, what broke. Target 5-10 real calls with a real opted-in person. If none exist, role-play a friend's/relative's workshop and label it simulated everywhere.
+
+Eval harness (/eval): 30+ scripted utterances through the live tool and parser (Hinglish numbers like "do darjan", "paanch sau"; 15 vs 50; unit confusion; corrections "nahi nahi, 150"; unknown alias; duplicates) + 10 Watchtower scenarios with expected bands. Scripted-eval numbers and real-call numbers are always shown separately.
+
+KPIs: entry accuracy; guardrail catch rate and false-reject rate; share of "haan-only" Close calls; avg Close call length (conversation_duration); call completion and retry rate; minutes from breakdown report to ack; Watchtower precision (Reds that were real); cost per factory-month (cost_breakdown).
+
+15. Demo, pitch and submission package
+
+Judge mode (no login, phone-first, fenced by abuse controls): "Call me now" for Close/Open/Alert; "Be the floor manager" panel with "inject a mistake"; Control Room with Watchtower list, component breakdowns, over-stock lane, live incident clock, needs_review queue; a "what if" box where a judge adds an owner note ("Shree Fasteners strike") and watches a part turn Red.
+
+2-minute pitch: (1) the floor manager who will never type into an ERP (pilot story); (2) the phone rings, a 60-second reconcile in Hinglish, mostly "haan"; (3) a tricky entry caught live by validate_entry; (4) Watchtower: "The bolt PO says day 2. This supplier has never been on time. Production starts day 4."; (5) machine down: technician then supervisor, with the clock; (6) measured numbers, clearly labelled; (7) "The ERP you never open, because it calls you."
+
+10-slide deck: problem with a real number · the user · the 60-second call · live validation · Watchtower · alert flow · evidence (eval vs pilot) · market with cited figures and caveats · business model (hypotheses labelled) · roadmap and ask.
+
+Submission checklist (docs/SUBMISSION.md holds exact values):
+
+[ ] Repo public, README with run steps, .env gitignored
+[ ] Live URL works from a phone, without login
+[ ] Demo video (<= 2 min) uploaded, sharing "Anyone with the link"
+[ ] Pitch deck uploaded, same sharing
+[ ] 200-char description final (Section 4)
+[ ] Form submitted with the same email used at registration
+[ ] Team size, name, project name filled
+16. Build plan, gates, cut order
+
+16.1 Original 4-day plan (Oct 27-31, now mostly elapsed)
+
+Day
+
+Ship
+
+Oct 27-28
+
+Close agent JSON + prompt, create_agent.py, one real call, webhook storing raw payloads, seed_demo.py, validate_entry created once in the dashboard and read back
+
+Oct 29
+
+Parser, guardrails, ledger, shortage engine, Watchtower risk lane + 10 scenario tests, abuse controls, small eval. Gate at noon
+
+Oct 30
+
+Control Room, judge mode, Open + Alert agents, capital lane, reorder, escalation, metering, daily sheet, importer/export, a real pilot call. Gate at noon
+
+Oct 31
+
+Demo video, deck, docs/SUBMISSION.md, submit
+
+Cut order: Tier 2 features → supplier mode in Alert → owner note → capital lane → Open's handover briefing. Never cut: read-back, guardrails, pilot log, the completed rule, consent fields, abuse controls.
+
+16.2 The "today" plan (recommended; assumes nothing is built yet)
+
+Order matters; stop adding scope the moment a step fails.
+
+Verify the submit page cutoff time and that registration email is known.
+Bolna setup (30-45 min): API key in env; GET /user/me to check wallet; call List voices/TTS providers to pick a valid Hinglish-capable model + voice pair; write agents/close/agent.json + prompt.md; scripts/create_agent.py; place one real call to a number the team owns; poll to completed.
+Backend (FastAPI): idempotent webhook (store raw payload, 200 fast, process on completed), store.py, config.py, bolna.py, seed_demo.py (Section 6.1).
+Watchtower on seeded data with the Section 6.1 expected result as pytest tests (it needs no new call type and survives any cut).
+Minimal UI (phone-friendly): Watchtower list with score components, last calls + transcripts, "Call me now" with abuse controls (checkbox, per-number limit, daily cap).
+After-call guardrails + simple parser (deterministic fixed-format confirmation line). Do live validate_entry only if the dashboard-readback of the tool JSON works in minutes; otherwise show it on the roadmap.
+Evidence: 2-3 real calls to team-owned or opted-in phones logged in pilot-log.md (label simulated ones); small scripted eval with its own numbers.
+Submission assets: 2-minute demo video, 10-slide deck, docs/SUBMISSION.md, submit. Reserve the last 60-90 minutes for this.
+Cut for today: Open and Alert agents (show as designed flows on a slide), supplier mode, outbound webhooks, importer, all Tier 2, login/billing/WhatsApp/ERP.
+
+If even step 2-3 are not green by the midpoint of the remaining time, submit a "voice layer + Watchtower on seeded data" entry with honest labelling rather than nothing.
+
+17. Open inputs and decisions for the team
+
+A real BOM (5-10 parts) and stock sheet from a small manufacturer, or confirmation that we role-play (and label it simulated).
+Shift-end time, language, and name/role of the person who will take the Close call.
+Screenshot of the Bolna Add Funds preferred-models panel and one Call History cost row (settles the flat-rate stack and telephony/platform fee).
+Ask the builders Slack: Web Call SDK access, sponsor credits, tool-call source IPs.
+Fix the working title and the pilot site (real or simulated).
+18. Sources
+
+Bolna docs index: https://www.bolna.ai/docs/llms.txt · AGENTS.md: https://www.bolna.ai/docs/AGENTS.md · API quickstart: https://www.bolna.ai/docs/quickstarts/api.md · Create agent: https://www.bolna.ai/docs/api-reference/agent/v2/create.md · Webhooks: https://www.bolna.ai/docs/post-call/polling-call-status-webhooks
+Pricing: https://www.bolna.ai/pricing, https://www.bolna.ai/docs/pricing/call-pricing.md · Preferred models: https://www.bolna.ai/docs/pricing/preferred-models.md · Variables/user_data: https://www.bolna.ai/docs/prompting/using-context.md · Custom function schema: https://www.bolna.ai/docs/tool-calling/custom-function-schema.md · Pre-call webhooks: https://www.bolna.ai/docs/tool-calling/pre-call-webhooks.md (the last five were cited in the v3 plan but are not in the PDFs supplied; re-fetch before relying on them)
+Udyam counts (as reported): https://kashmirlife.net/jammu-kashmir-records-over-9-64-lakh-msme-registrations-since-2020-447368/ · MSME GDP/exports share (secondary): https://askfuzz.ai/discover/news/msmes/indias-msmes-contribute-31-1-to-gdp-48-58-to-exports
+DPDP Rules 2025: https://www.jsalaw.com/wp-content/uploads/2025/11/JSA-Prism-InfoTech-November-2025-DPDP-Rules.Final_.pdf, https://www.azbpartners.com/bank/update-indias-digital-personal-data-protection-framework-comes-into-effect/
+Public entries: github.com/dehshat/bolna-symphony-convoai · github.com/sarthwa8/OnlyVoiceOctober · github.com/Pushkarmondal/bolna.ai-Buildathon
+19. First message to give Gemini / Copilot
+
+Read KARKHANA_VOICE_HANDOFF.md fully and follow Section 0 rules. Confirm in 3 lines what you understood. Then execute Section 16.2 step 2 and 3: output complete files with full paths for config.py, bolna.py, agents/close/agent.json, agents/close/prompt.md, scripts/create_agent.py, scripts/place_test_call.py, the idempotent webhook route, store.py with the Section 7 tables needed for Close, and .env.example. End with Run it / Verify it / What can break. Anything not listed in Section 9 is "not verified": tell me which Bolna docs page to paste.
+
+Run it
+
+Paste this file (as the first message or as an attached/context file) into Gemini or Copilot, then send the Section 19 message. Update Section 1 first with what actually exists.
+
+Verify it
+
+The assistant replies with a 3-line summary, flags the Oct 31 deadline, uses completed (not call-disconnected), wraps the agent body in agent_config/agent_prompts, and refuses to guess unlisted Bolna fields.
+
+What can break
+
+Stale Bolna facts: the API snapshot is from Oct 27, 2026; model/voice lists and the preferred-models list change. Re-check against the live docs and your Add Funds panel.
+Assistant drifts into the full v3 scope with no time left. Hold it to Section 16.2.
+Live tool and Hinglish accuracy are unproven: custom-function placement via API and the model/voice pairs are in the not-verified table; the after-call guardrail is the safety net.
